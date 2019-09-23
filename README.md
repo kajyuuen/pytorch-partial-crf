@@ -6,13 +6,13 @@ Partial/Fuzzy conditional random field in PyTorch.
 
 ### Install
 
-```shell
+```
 pip install pytorch-partial-crf
 ```
 
 ### Use partial CRF
 
-```python
+```
 import torch
 from pytorch_partial_crf import PartialCRF
 
