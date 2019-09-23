@@ -2,15 +2,15 @@
 
 (Partial/Fuzzy) conditional random field in PyTorch.
 
-# How to use
+## How to use
 
-## Install
+### Install
 
 ```shell
 pip install pytorch-partial-crf
 ```
 
-## Use partial CRF
+### Use partial CRF
 
 ```python
 import torch
@@ -33,10 +33,10 @@ tags = torch.LongTensor([
 model(emissions, tags)
 ```
 
-# License
+## License
 
 MIT
 
-## References
+### References
 
 The implementation is based on AllenNLP CRF module and pytorch-crf.
