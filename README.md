@@ -1,6 +1,6 @@
 # pytorch-partial-crf
 
-(Partial/Fuzzy) conditional random field in PyTorch.
+Partial/Fuzzy conditional random field in PyTorch.
 
 ## How to use
 
