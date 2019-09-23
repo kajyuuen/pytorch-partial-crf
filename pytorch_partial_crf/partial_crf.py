@@ -89,15 +89,13 @@ class PartialCRF(nn.Module):
 
         emissions = emissions.transpose(0, 1).contiguous()
         mask = mask.float().transpose(0, 1).contiguous()
-        possible_tags = possible_tags.transpose(0, 1)
+        possible_tags = possible_tags.float().transpose(0, 1)
 
         # Start transition score and first emission
-        # print(possible_tags)
         first_possible_tag = possible_tags[0]
-
+        
         alpha = self.start_transitions + emissions[0]      # (batch_size, num_tags)
         alpha[(first_possible_tag == 0)] = IMPOSSIBLE_SCORE
-        print(alpha)
 
         for i in range(1, sequence_length):
             current_possible_tags = possible_tags[i-1] # (batch_size, num_tags)
@@ -108,13 +106,12 @@ class PartialCRF(nn.Module):
             emissions_score[(next_possible_tags == 0)] = IMPOSSIBLE_SCORE
             emissions_score = emissions_score.view(batch_size, 1, num_tags)
 
+
             # Transition scores
-            transition_scores = self.transitions.view(1, num_tags, num_tags).expand(batch_size, num_tags, num_tags) \
-                        * current_possible_tags.unsqueeze(-1).expand(batch_size, num_tags, num_tags) \
-                        * next_possible_tags.unsqueeze(-1).expand(batch_size, num_tags, num_tags).transpose(1, 2)
-            # print(transition_scores)
-            transition_scores[(transition_scores == 0)] = IMPOSSIBLE_SCORE
-            # print(transition_scores)
+            transition_scores = self.transitions.view(1, num_tags, num_tags).expand(batch_size, num_tags, num_tags).clone()
+            transition_scores[(current_possible_tags == 0)] = IMPOSSIBLE_SCORE
+            transition_scores.transpose(1, 2)[(next_possible_tags == 0)] = IMPOSSIBLE_SCORE
+
             broadcast_alpha = alpha.view(batch_size, num_tags, 1)
 
             # Add all the scores

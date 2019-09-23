@@ -8,7 +8,7 @@ def create_possible_tag_masks(num_tags: int, tags: torch.Tensor) -> torch.Tensor
     copy_tags[copy_tags == UNLABELED_INDEX] = 0
 
     tags_ = torch.unsqueeze(copy_tags, 2)
-    masks = torch.zeros(tags_.size(0), tags_.size(1), num_tags)
+    masks = torch.zeros(tags_.size(0), tags_.size(1), num_tags, dtype=torch.uint8)
     masks.scatter_(2, tags_, 1)
     masks[no_annotation_idx] = 1
     return masks
