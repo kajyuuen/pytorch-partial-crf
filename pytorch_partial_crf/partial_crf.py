@@ -89,7 +89,7 @@ class PartialCRF(nn.Module):
 
         emissions = emissions.transpose(0, 1).contiguous()
         mask = mask.float().transpose(0, 1).contiguous()
-        possible_tags = possible_tags.float().transpose(0, 1)
+        possible_tags = possible_tags.transpose(0, 1)
 
         # Start transition score and first emission
         # print(possible_tags)
