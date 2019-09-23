@@ -1,5 +1,7 @@
 import random
 
+from typing import List
+
 import pytest
 import torch
 
@@ -9,7 +11,7 @@ SEED = 4738
 random.seed(SEED)
 torch.manual_seed(SEED)
 
-def simple_create_possible_tag_masks(num_tags, tags_list):
+def manually_create_possible_tag_masks(num_tags: int, tags_list: List):
     results = []
     for tags in tags_list:
         result = []
@@ -31,6 +33,6 @@ def test_possible_tag_masks():
     ]
 
     tags = torch.tensor(tags_list, dtype=torch.long)
-    assert simple_create_possible_tag_masks(num_tags, tags_list) == create_possible_tag_masks(num_tags, tags).tolist()
+    assert manually_create_possible_tag_masks(num_tags, tags_list) == create_possible_tag_masks(num_tags, tags).tolist()
 
 

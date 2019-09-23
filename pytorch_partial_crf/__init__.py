@@ -1,5 +1,3 @@
 __version__ = '0.0.1'
 
-
-def main():
-    print('Hello, World!')
+from pytorch_partial_crf.partial_crf import PartialCRF
