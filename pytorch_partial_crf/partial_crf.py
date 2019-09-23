@@ -128,7 +128,7 @@ class PartialCRF(nn.Module):
 
         return log_sum_exp(stops) # (batch_size,)
 
-    def _viterbi_tags(self, emissions: torch.Tensor, mask: torch.ByteTensor):
+    def viterbi_decode(self, emissions: torch.Tensor, mask: torch.ByteTensor):
         """
         Parameters:
             emissions: (batch_size, sequence_length, num_tags)

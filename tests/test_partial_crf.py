@@ -67,7 +67,7 @@ class TestAsCRF:
         assert manual_log_likelihood.item() == approx(log_likelihood.item())
 
     def test_forward_with_mask(self):
-        mask = torch.LongTensor([
+        mask = torch.ByteTensor([
                 [1, 1, 1, 1],
                 [1, 1, 0, 0]
         ])
@@ -87,6 +87,16 @@ class TestAsCRF:
             manual_log_likelihood += denominator - gold_score
 
         assert manual_log_likelihood.item() == approx(log_likelihood.item())
+
+    def test_decode_without_mask(self):
+        mask = torch.ByteTensor([
+                [1, 1, 1, 1],
+                [1, 1, 0, 0]
+        ])
+
+        viterbi_path = self.crf.viterbi_decode(self.emissions, mask)
+        assert viterbi_path == [[2, 1, 2, 1], [2, 1]]
+
 
 class TestAsPartialCRF:
     def setup(self):
