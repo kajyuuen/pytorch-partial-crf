@@ -57,11 +57,11 @@ class PartialCRF(nn.Module):
 
         for i in range(1, sequence_length):
 
-            emissions_score = emissions[i].view(batch_size, 1, num_tags)             # (batch_size, 1, num_tags)
-            transition_scores = self.transitions.view(1, num_tags, num_tags)         # (1, num_tags, num_tags)
-            broadcast_alpha = alpha.view(batch_size, num_tags, 1)                    # (batch_size, num_tags, 1)
+            emissions_score = emissions[i].view(batch_size, 1, num_tags)      # (batch_size, 1, num_tags)
+            transition_scores = self.transitions.view(1, num_tags, num_tags)  # (1, num_tags, num_tags)
+            broadcast_alpha = alpha.view(batch_size, num_tags, 1)             # (batch_size, num_tags, 1)
 
-            inner = broadcast_alpha + emissions_score + transition_scores            # (batch_size, num_tags, num_tags)
+            inner = broadcast_alpha + emissions_score + transition_scores     # (batch_size, num_tags, num_tags)
 
             alpha = (log_sum_exp(inner, 1) * mask[i].view(batch_size, 1) +
                      alpha * (1 - mask[i]).view(batch_size, 1))
@@ -106,15 +106,15 @@ class PartialCRF(nn.Module):
             emissions_score[(next_possible_tags == 0)] = IMPOSSIBLE_SCORE
             emissions_score = emissions_score.view(batch_size, 1, num_tags)
 
-
             # Transition scores
             transition_scores = self.transitions.view(1, num_tags, num_tags).expand(batch_size, num_tags, num_tags).clone()
             transition_scores[(current_possible_tags == 0)] = IMPOSSIBLE_SCORE
             transition_scores.transpose(1, 2)[(next_possible_tags == 0)] = IMPOSSIBLE_SCORE
 
+            # Broadcast alpha
             broadcast_alpha = alpha.view(batch_size, num_tags, 1)
 
-            # Add all the scores
+            # Add all scores
             inner = broadcast_alpha + emissions_score + transition_scores # (batch_size, num_tags, num_tags)
             alpha = (log_sum_exp(inner, 1) * mask[i].view(batch_size, 1) +
                      alpha * (1 - mask[i]).view(batch_size, 1))
@@ -128,7 +128,86 @@ class PartialCRF(nn.Module):
 
         return log_sum_exp(stops) # (batch_size,)
 
-    def viterbi_decode(self, emissions: torch.Tensor, mask: torch.ByteTensor):
+    def _forward_algorithm(self,
+                           emissions: torch.Tensor,
+                           mask: torch.ByteTensor,
+                           reverse_direction: bool = False) -> torch.FloatTensor:
+        """
+        Parameters:
+            emissions: (batch_size, sequence_length, num_tags)
+            tags:  (batch_size, sequence_length)
+            mask:  Show padding tags. 0 don't calculate score. (batch_size, sequence_length)
+            reverse: This parameter decide algorithm direction.
+        Returns:
+            log_probabilities: (sequence_length, batch_size, num_tags)
+        """
+        batch_size, sequence_length, num_tags = emissions.data.shape
+
+        broadcast_emissions = emissions.transpose(0, 1).unsqueeze(2).contiguous() # (sequence_length, batch_size, 1, num_tags)
+        mask = mask.float().transpose(0, 1).contiguous()                          # (sequence_length, batch_size)
+        broadcast_transitions = self.transitions.unsqueeze(0)                     # (1, num_tags, num_tags)
+        sequence_iter = range(1, sequence_length)
+
+        # backward algorithm
+        if reverse_direction:
+            # Transpose transitions matrix and emissions
+            broadcast_transitions = broadcast_transitions.transpose(1, 2)         # (1, num_tags, num_tags)
+            broadcast_emissions = broadcast_emissions.transpose(2, 3)             # (sequence_length, batch_size, num_tags, 1)
+            sequence_iter = reversed(sequence_iter)
+
+            # It is beta
+            log_proba = [self.end_transitions.expand(batch_size, num_tags)]
+        # forward algorithm
+        else:
+            # It is alpha
+            log_proba = [emissions.transpose(0, 1)[0] + self.start_transitions.view(1, -1)]
+
+        for i in sequence_iter:
+            # Broadcast log probability
+            broadcast_log_proba = log_proba[-1].unsqueeze(2) # (batch_size, num_tags, 1)
+
+            # Add all scores
+            # inner: (batch_size, num_tags, num_tags)
+            # broadcast_log_proba:   (batch_size, num_tags, 1)
+            # broadcast_transitions: (1, num_tags, num_tags)
+            # broadcast_emissions:   (batch_size, 1, num_tags)
+            inner = broadcast_log_proba \
+                    + broadcast_transitions \
+                    + broadcast_emissions[i]
+
+            # Append log proba
+            log_proba.append((log_sum_exp(inner, 1) * mask[i].view(batch_size, 1) +
+                     log_proba[-1] * (1 - mask[i]).view(batch_size, 1)))
+
+        if reverse_direction:
+            log_proba.reverse()
+
+        return torch.stack(log_proba)
+
+    def marginal_probabilities(self,
+                               emissions: torch.Tensor,
+                               mask: Optional[torch.ByteTensor] = None) -> torch.FloatTensor:
+        """
+        Parameters:
+            emissions: (batch_size, sequence_length, num_tags)
+            mask:  Show padding tags. 0 don't calculate score. (batch_size, sequence_length)
+        Returns:
+            marginal_probabilities: (sequence_length, sequence_length, num_tags)
+        """
+        if mask is None:
+            batch_size, sequence_length, _ = emissions.data.shape
+            mask = torch.ones([batch_size, sequence_length], dtype=torch.uint8)
+
+        alpha = self._forward_algorithm(emissions, mask, reverse_direction = False)
+        beta = self._forward_algorithm(emissions, mask, reverse_direction = True)
+        z = log_sum_exp(alpha[alpha.size(0) - 1] + self.end_transitions, dim = 1)
+
+        proba = alpha + beta - z.view(1, -1, 1)
+        return torch.exp(proba)
+
+    def viterbi_decode(self,
+                       emissions: torch.Tensor,
+                       mask: Optional[torch.ByteTensor] = None) -> torch.FloatTensor:
         """
         Parameters:
             emissions: (batch_size, sequence_length, num_tags)
@@ -137,6 +216,8 @@ class PartialCRF(nn.Module):
             tags: (batch_size)
         """
         batch_size, sequence_length, _ = emissions.shape
+        if mask is None:
+            mask = torch.ones([batch_size, sequence_length], dtype=torch.uint8)
 
         emissions = emissions.transpose(0, 1).contiguous()
         mask = mask.transpose(0, 1).contiguous()
