@@ -1,6 +1,7 @@
 import torch
 
 UNLABELED_INDEX = -1
+IMPOSSIBLE_SCORE = -10000000.0
 
 def create_possible_tag_masks(num_tags: int, tags: torch.Tensor) -> torch.Tensor:
     copy_tags = tags.clone()

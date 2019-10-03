@@ -87,17 +87,3 @@ class TestCRF:
             manual_log_likelihood += denominator - gold_score
 
         assert manual_log_likelihood.item() == approx(log_likelihood.item())
-
-    def test_decode_without_mask(self):
-        mask = torch.ByteTensor([
-                [1, 1, 1, 1],
-                [1, 1, 0, 0]
-        ])
-
-        viterbi_path = self.crf.viterbi_decode(self.emissions, mask)
-        assert viterbi_path == [[2, 1, 2, 1], [2, 1]]
-
-    def test_marginal_probabilities(self):
-        marginal_probabilities = self.crf.marginal_probabilities(self.emissions)
-        # TODO: Add test
-        assert torch.allclose(marginal_probabilities.sum(dim=2), torch.ones_like(marginal_probabilities.sum(dim=2)))

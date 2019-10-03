@@ -6,7 +6,7 @@ import torch.nn as nn
 from pytorch_partial_crf.utils import create_possible_tag_masks
 from pytorch_partial_crf.utils import log_sum_exp
 
-IMPOSSIBLE_SCORE = -10000000.0
+from pytorch_partial_crf.utils import IMPOSSIBLE_SCORE
 
 class PartialCRF(nn.Module):
     """Partial/Fuzzy Conditional random field.
@@ -183,75 +183,3 @@ class PartialCRF(nn.Module):
             log_proba.reverse()
 
         return torch.stack(log_proba)
-
-    def marginal_probabilities(self,
-                               emissions: torch.Tensor,
-                               mask: Optional[torch.ByteTensor] = None) -> torch.FloatTensor:
-        """
-        Parameters:
-            emissions: (batch_size, sequence_length, num_tags)
-            mask:  Show padding tags. 0 don't calculate score. (batch_size, sequence_length)
-        Returns:
-            marginal_probabilities: (sequence_length, sequence_length, num_tags)
-        """
-        if mask is None:
-            batch_size, sequence_length, _ = emissions.data.shape
-            mask = torch.ones([batch_size, sequence_length], dtype=torch.uint8)
-
-        alpha = self._forward_algorithm(emissions, mask, reverse_direction = False)
-        beta = self._forward_algorithm(emissions, mask, reverse_direction = True)
-        z = log_sum_exp(alpha[alpha.size(0) - 1] + self.end_transitions, dim = 1)
-
-        proba = alpha + beta - z.view(1, -1, 1)
-        return torch.exp(proba)
-
-    def viterbi_decode(self,
-                       emissions: torch.Tensor,
-                       mask: Optional[torch.ByteTensor] = None) -> torch.FloatTensor:
-        """
-        Parameters:
-            emissions: (batch_size, sequence_length, num_tags)
-            mask:  Show padding tags. 0 don't calculate score. (batch_size, sequence_length)
-        Returns:
-            tags: (batch_size)
-        """
-        batch_size, sequence_length, _ = emissions.shape
-        if mask is None:
-            mask = torch.ones([batch_size, sequence_length], dtype=torch.uint8)
-
-        emissions = emissions.transpose(0, 1).contiguous()
-        mask = mask.transpose(0, 1).contiguous()
-
-        # Start transition and first emission score
-        score = self.start_transitions + emissions[0]
-        history = []
-
-        for i in range(1, sequence_length):
-            broadcast_score = score.unsqueeze(2)
-            broadcast_emissions = emissions[i].unsqueeze(1)
-
-            next_score = broadcast_score + self.transitions + broadcast_emissions
-            next_score, indices = next_score.max(dim=1)
-
-            score = torch.where(mask[i].unsqueeze(1), next_score, score)
-            history.append(indices)
-
-        # Add end transition score
-        score += self.end_transitions
-
-        # Compute the best path
-        seq_ends = mask.long().sum(dim = 0) - 1
-
-        best_tags_list = []
-        for i in range(batch_size):
-            _, best_last_tag = score[i].max(dim = 0)
-            best_tags = [best_last_tag.item()]
-
-            for hist in reversed(history[:seq_ends[i]]):
-                best_last_tag = hist[i][best_tags[-1]]
-                best_tags.append(best_last_tag.item())
-
-            best_tags.reverse()
-            best_tags_list.append(best_tags)
-
-        return best_tags_list
