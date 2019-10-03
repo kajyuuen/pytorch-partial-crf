@@ -20,7 +20,6 @@ from pytorch_partial_crf import PartialCRF
 num_tags = 6
 model = PartialCRF(num_tags)
 
-# Computing log likelihood
 batch_size, sequence_length = 3, 5
 emissions = torch.randn(batch_size, sequence_length, num_tags)
 
@@ -30,6 +29,8 @@ tags = torch.LongTensor([
     [-1, 3, 3, 2, -1],
     [-1, 0, -1, -1, 4],
 ])
+
+# Computing log likelihood
 model(emissions, tags)
 ```
 
