@@ -117,7 +117,7 @@ class PartialCRF(BaseCRF):
         # Add end transition score
         last_tag_indexes = mask.sum(0).long() - 1
         end_transitions = self.end_transitions.expand(batch_size, num_tags) \
-                            * possible_tags.transpose(0, 1).view(sequence_length * batch_size, num_tags)[last_tag_indexes + torch.arange(batch_size) * sequence_length]
+                            * possible_tags.transpose(0, 1).view(sequence_length * batch_size, num_tags)[last_tag_indexes + torch.arange(batch_size, device=possible_tags.device) * sequence_length]
         end_transitions[(end_transitions == 0)] = IMPOSSIBLE_SCORE
         stops = alpha + end_transitions
 
