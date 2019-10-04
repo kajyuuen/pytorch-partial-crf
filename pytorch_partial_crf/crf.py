@@ -16,9 +16,9 @@ class CRF(nn.Module):
         self.end_transitions = nn.Parameter(torch.empty(num_tags))
         self.transitions = nn.Parameter(torch.empty(num_tags, num_tags))
 
-        self.reset_parameters()
+        self._reset_parameters()
 
-    def reset_parameters(self) -> None:
+    def _reset_parameters(self) -> None:
         nn.init.uniform_(self.start_transitions, -0.1, 0.1)
         nn.init.uniform_(self.end_transitions, -0.1, 0.1)
         nn.init.uniform_(self.transitions, -0.1, 0.1)
