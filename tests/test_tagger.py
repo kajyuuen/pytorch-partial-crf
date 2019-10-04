@@ -9,7 +9,7 @@ import torch
 
 from pytorch_partial_crf.tagger import Tagger
 
-class TestCRF:
+class TestTagger:
     def setup(self):
         self.emissions = torch.Tensor([
             [[1, 0, 0, .1, .4, .6], [0, .5, .7, 0, .1, .3], [.1, .5, 2, .7, 1, 0], [.4, 1, .9, .2, .9, 0]],
