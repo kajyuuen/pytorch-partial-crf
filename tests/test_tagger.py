@@ -7,7 +7,7 @@ import pytest
 from pytest import approx
 import torch
 
-from pytorch_partial_crf.tagger import Tagger
+from pytorch_partial_crf import Tagger
 
 class TestTagger:
     def setup(self):
