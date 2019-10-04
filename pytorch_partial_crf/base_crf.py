@@ -1,30 +1,44 @@
+from abc import abstractmethod
 from typing import Optional
 
 import torch
+import torch.nn as nn
 
 from pytorch_partial_crf.utils import create_possible_tag_masks
 from pytorch_partial_crf.utils import log_sum_exp
 
 from pytorch_partial_crf.utils import IMPOSSIBLE_SCORE
 
-class Tagger:
-    """Tagger
+class BaseCRF(nn.Module):
+    """BaseCRF
     """
     def __init__(self, num_tags: int) -> None:
+        super().__init__()
         self.num_tags = num_tags
+        self.start_transitions = nn.Parameter(torch.empty(num_tags))
+        self.end_transitions = nn.Parameter(torch.empty(num_tags))
+        self.transitions = nn.Parameter(torch.empty(num_tags, num_tags))
+
+        self._reset_parameters()
+
+    def _reset_parameters(self) -> None:
+        nn.init.uniform_(self.start_transitions, -0.1, 0.1)
+        nn.init.uniform_(self.end_transitions, -0.1, 0.1)
+        nn.init.uniform_(self.transitions, -0.1, 0.1)
+
+    @abstractmethod
+    def forward(self,
+                emissions: torch.Tensor,
+                tags: torch.LongTensor,
+                mask: Optional[torch.ByteTensor] = None) -> torch.Tensor:
+        raise NotImplementedError()
 
     def viterbi_decode(self,
                        emissions: torch.Tensor,
-                       transitions: torch.Tensor,
-                       start_transitions: torch.Tensor,
-                       end_transitions: torch.Tensor,
                        mask: Optional[torch.ByteTensor] = None) -> torch.FloatTensor:
         """
         Parameters:
             emissions: (batch_size, sequence_length, num_tags)
-            transitions: (num_tags, num_tags)
-            start_transitions: (num_tags)
-            end_transitions: (num_tags)
             mask:  Show padding tags. 0 don't calculate score. (batch_size, sequence_length)
         Returns:
             tags: (batch_size)
@@ -37,21 +51,21 @@ class Tagger:
         mask = mask.transpose(0, 1).contiguous()
 
         # Start transition and first emission score
-        score = start_transitions + emissions[0]
+        score = self.start_transitions + emissions[0]
         history = []
 
         for i in range(1, sequence_length):
             broadcast_score = score.unsqueeze(2)
             broadcast_emissions = emissions[i].unsqueeze(1)
 
-            next_score = broadcast_score + transitions + broadcast_emissions
+            next_score = broadcast_score + self.transitions + broadcast_emissions
             next_score, indices = next_score.max(dim = 1)
 
             score = torch.where(mask[i].unsqueeze(1), next_score, score)
             history.append(indices)
 
         # Add end transition score
-        score += end_transitions
+        score += self.end_transitions
 
         # Compute the best path
         seq_ends = mask.long().sum(dim = 0) - 1
@@ -72,16 +86,10 @@ class Tagger:
 
     def marginal_probabilities(self,
                                emissions: torch.Tensor,
-                               transitions: torch.Tensor,
-                               start_transitions: torch.Tensor,
-                               end_transitions: torch.Tensor,
                                mask: Optional[torch.ByteTensor] = None) -> torch.FloatTensor:
         """
         Parameters:
             emissions: (batch_size, sequence_length, num_tags)
-            transitions: (num_tags, num_tags)
-            start_transitions: (num_tags)
-            end_transitions: (num_tags)
             mask:  Show padding tags. 0 don't calculate score. (batch_size, sequence_length)
         Returns:
             marginal_probabilities: (sequence_length, sequence_length, num_tags)
@@ -91,35 +99,23 @@ class Tagger:
             mask = torch.ones([batch_size, sequence_length], dtype=torch.uint8)
 
         alpha = self._forward_algorithm(emissions, 
-                                        transitions,
-                                        start_transitions,
-                                        end_transitions,
                                         mask, 
                                         reverse_direction = False)
         beta = self._forward_algorithm(emissions, 
-                                        transitions,
-                                        start_transitions,
-                                        end_transitions,
                                         mask, 
                                         reverse_direction = True)
-        z = log_sum_exp(alpha[alpha.size(0) - 1] + end_transitions, dim = 1)
+        z = log_sum_exp(alpha[alpha.size(0) - 1] + self.end_transitions, dim = 1)
 
         proba = alpha + beta - z.view(1, -1, 1)
         return torch.exp(proba)
 
     def _forward_algorithm(self,
                            emissions: torch.Tensor,
-                           transitions: torch.Tensor,
-                           start_transitions: torch.Tensor,
-                           end_transitions: torch.Tensor,
                            mask: torch.ByteTensor,
                            reverse_direction: bool = False) -> torch.FloatTensor:
         """
         Parameters:
             emissions: (batch_size, sequence_length, num_tags)
-            transitions: (num_tags, num_tags)
-            start_transitions: (num_tags)
-            end_transitions: (num_tags)
             mask:  Show padding tags. 0 don't calculate score. (batch_size, sequence_length)
             reverse: This parameter decide algorithm direction.
         Returns:
@@ -129,7 +125,7 @@ class Tagger:
 
         broadcast_emissions = emissions.transpose(0, 1).unsqueeze(2).contiguous() # (sequence_length, batch_size, 1, num_tags)
         mask = mask.float().transpose(0, 1).contiguous()                          # (sequence_length, batch_size)
-        broadcast_transitions = transitions.unsqueeze(0)                     # (1, num_tags, num_tags)
+        broadcast_transitions = self.transitions.unsqueeze(0)                     # (1, num_tags, num_tags)
         sequence_iter = range(1, sequence_length)
 
         # backward algorithm
@@ -140,11 +136,11 @@ class Tagger:
             sequence_iter = reversed(sequence_iter)
 
             # It is beta
-            log_proba = [end_transitions.expand(batch_size, num_tags)]
+            log_proba = [self.end_transitions.expand(batch_size, num_tags)]
         # forward algorithm
         else:
             # It is alpha
-            log_proba = [emissions.transpose(0, 1)[0] + start_transitions.view(1, -1)]
+            log_proba = [emissions.transpose(0, 1)[0] + self.start_transitions.view(1, -1)]
 
         for i in sequence_iter:
             # Broadcast log probability
@@ -170,17 +166,11 @@ class Tagger:
 
     def restricted_viterbi_decode(self,
                                   emissions: torch.Tensor,
-                                  transitions: torch.Tensor,
-                                  start_transitions: torch.Tensor,
-                                  end_transitions: torch.Tensor,
                                   incomplete_tags: torch.ByteTensor,
                                   mask: Optional[torch.ByteTensor] = None) -> torch.FloatTensor:
         """
         Parameters:
             emissions: (batch_size, sequence_length, num_tags)
-            transitions: (num_tags, num_tags)
-            start_transitions: (num_tags)
-            end_transitions: (num_tags)
             incomplete_tags: (batch_size, sequence_length)
             mask:  Show padding tags. 0 don't calculate score. (batch_size, sequence_length)
         Returns:
@@ -197,7 +187,7 @@ class Tagger:
         # Start transition score and first emission
         first_possible_tag = possible_tags[0]
 
-        score = start_transitions + emissions[0]      # (batch_size, num_tags)
+        score = self.start_transitions + emissions[0]      # (batch_size, num_tags)
         score[(first_possible_tag == 0)] = IMPOSSIBLE_SCORE
 
         history = []
@@ -212,7 +202,7 @@ class Tagger:
             emissions_score = emissions_score.view(batch_size, 1, num_tags)
 
             # Transition score
-            transition_scores = transitions.view(1, num_tags, num_tags).expand(batch_size, num_tags, num_tags).clone()
+            transition_scores = self.transitions.view(1, num_tags, num_tags).expand(batch_size, num_tags, num_tags).clone()
             transition_scores[(current_possible_tags == 0)] = IMPOSSIBLE_SCORE
             transition_scores.transpose(1, 2)[(next_possible_tags == 0)] = IMPOSSIBLE_SCORE
 
@@ -224,7 +214,7 @@ class Tagger:
             history.append(indices)
 
         # Add end transition score
-        score += end_transitions
+        score += self.end_transitions
 
         # Compute the best path for each sample
         seq_ends = mask.long().sum(dim=0) - 1

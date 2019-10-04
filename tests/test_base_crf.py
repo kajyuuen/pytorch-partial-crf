@@ -7,9 +7,13 @@ import pytest
 from pytest import approx
 import torch
 
-from pytorch_partial_crf import Tagger
+from pytorch_partial_crf.base_crf import BaseCRF
 
-class TestTagger:
+SEED = 4738
+random.seed(SEED)
+torch.manual_seed(SEED)
+
+class TestBaseCRF:
     def setup(self):
         self.emissions = torch.Tensor([
             [[1, 0, 0, .1, .4, .6], [0, .5, .7, 0, .1, .3], [.1, .5, 2, .7, 1, 0], [.4, 1, .9, .2, .9, 0]],
@@ -29,13 +33,13 @@ class TestTagger:
         self.transitions_to_end = torch.Tensor([-0.1, -0.2, 0.3, -0.4, -0.4, -0.5])
 
         self.num_tags = 6
-        self.tagger = Tagger(self.num_tags)
+        self.base_crf = BaseCRF(self.num_tags)
+        self.base_crf.transitions = torch.nn.Parameter(self.transitions)
+        self.base_crf.start_transitions = torch.nn.Parameter(self.transitions_from_start)
+        self.base_crf.end_transitions = torch.nn.Parameter(self.transitions_to_end)
 
     def test_decode_without_mask(self):
-        viterbi_path = self.tagger.viterbi_decode(self.emissions,
-                                                  self.transitions,
-                                                  self.transitions_from_start,
-                                                  self.transitions_to_end)
+        viterbi_path = self.base_crf.viterbi_decode(self.emissions)
         assert viterbi_path == [[2, 1, 2, 1], [2, 1, 2, 1]]
 
     def test_decode_with_mask(self):
@@ -44,17 +48,10 @@ class TestTagger:
                 [1, 1, 0, 0]
         ])
 
-        viterbi_path = self.tagger.viterbi_decode(self.emissions,
-                                                  self.transitions,
-                                                  self.transitions_from_start,
-                                                  self.transitions_to_end,
-                                                  mask)
+        viterbi_path = self.base_crf.viterbi_decode(self.emissions, mask)
         assert viterbi_path == [[2, 1, 2, 1], [2, 1]]
 
     def test_marginal_probabilities(self):
-        marginal_probabilities = self.tagger.marginal_probabilities(self.emissions,
-                                                                    self.transitions,
-                                                                    self.transitions_from_start,
-                                                                    self.transitions_to_end)
+        marginal_probabilities = self.base_crf.marginal_probabilities(self.emissions)
         # TODO: Add test
         assert torch.allclose(marginal_probabilities.sum(dim=2), torch.ones_like(marginal_probabilities.sum(dim=2)))

@@ -3,22 +3,17 @@ from typing import List, Optional
 import torch
 import torch.nn as nn
 
+from pytorch_partial_crf.base_crf import BaseCRF
 from pytorch_partial_crf.utils import create_possible_tag_masks
 from pytorch_partial_crf.utils import log_sum_exp
 
 from pytorch_partial_crf.utils import IMPOSSIBLE_SCORE
 
-class PartialCRF(nn.Module):
+class PartialCRF(BaseCRF):
     """Partial/Fuzzy Conditional random field.
     """
     def __init__(self, num_tags: int) -> None:
-        super().__init__()
-        self.num_tags = num_tags
-        self.start_transitions = nn.Parameter(torch.empty(num_tags))
-        self.end_transitions = nn.Parameter(torch.empty(num_tags))
-        self.transitions = nn.Parameter(torch.empty(num_tags, num_tags))
-
-        self._reset_parameters()
+        super().__init__(num_tags)
 
     def _reset_parameters(self) -> None:
         nn.init.uniform_(self.start_transitions, -0.1, 0.1)
