@@ -12,19 +12,16 @@ from pytorch_partial_crf.utils import IMPOSSIBLE_SCORE
 class BaseCRF(nn.Module):
     """BaseCRF
     """
-    def __init__(self, num_tags: int) -> None:
+    def __init__(self, num_tags: int, padding_idx: int = None) -> None:
         super().__init__()
         self.num_tags = num_tags
-        self.start_transitions = nn.Parameter(torch.empty(num_tags))
-        self.end_transitions = nn.Parameter(torch.empty(num_tags))
-        self.transitions = nn.Parameter(torch.empty(num_tags, num_tags))
-
-        self._reset_parameters()
-
-    def _reset_parameters(self) -> None:
-        nn.init.uniform_(self.start_transitions, -0.1, 0.1)
-        nn.init.uniform_(self.end_transitions, -0.1, 0.1)
-        nn.init.uniform_(self.transitions, -0.1, 0.1)
+        self.start_transitions = torch.randn(num_tags)
+        self.end_transitions = torch.randn(num_tags)
+        init_transition = torch.randn(num_tags, num_tags)
+        if padding_idx is not None:
+            init_transition[:, padding_idx] = IMPOSSIBLE_SCORE
+            init_transition[padding_idx, :] = IMPOSSIBLE_SCORE
+        self.transitions = nn.Parameter(init_transition)
 
     @abstractmethod
     def forward(self,
