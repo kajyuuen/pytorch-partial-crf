@@ -13,7 +13,7 @@ class PartialCRF(BaseCRF):
     """Partial/Fuzzy Conditional random field.
     """
     def __init__(self, num_tags: int, padding_idx: int = None) -> None:
-        super().__init__(num_tags)
+        super().__init__(num_tags, padding_idx)
 
     def _reset_parameters(self) -> None:
         nn.init.uniform_(self.start_transitions, -0.1, 0.1)

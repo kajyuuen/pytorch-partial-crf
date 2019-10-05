@@ -11,7 +11,7 @@ class CRF(BaseCRF):
     """Conditional random field.
     """
     def __init__(self, num_tags: int, padding_idx: int = None) -> None:
-        super().__init__(num_tags)
+        super().__init__(num_tags, padding_idx)
 
     def forward(self,
                 emissions: torch.Tensor,
