@@ -10,7 +10,7 @@ from pytorch_partial_crf.utils import log_sum_exp
 class CRF(BaseCRF):
     """Conditional random field.
     """
-    def __init__(self, num_tags: int) -> None:
+    def __init__(self, num_tags: int, padding_idx: int = None) -> None:
         super().__init__(num_tags)
 
     def forward(self,

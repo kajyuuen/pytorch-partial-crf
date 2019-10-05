@@ -12,7 +12,7 @@ from pytorch_partial_crf.utils import IMPOSSIBLE_SCORE
 class PartialCRF(BaseCRF):
     """Partial/Fuzzy Conditional random field.
     """
-    def __init__(self, num_tags: int) -> None:
+    def __init__(self, num_tags: int, padding_idx: int = None) -> None:
         super().__init__(num_tags)
 
     def _reset_parameters(self) -> None:
