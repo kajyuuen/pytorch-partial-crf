@@ -30,57 +30,6 @@ class BaseCRF(nn.Module):
                 mask: Optional[torch.ByteTensor] = None) -> torch.Tensor:
         raise NotImplementedError()
 
-    def viterbi_decode(self,
-                       emissions: torch.Tensor,
-                       mask: Optional[torch.ByteTensor] = None) -> torch.FloatTensor:
-        """
-        Parameters:
-            emissions: (batch_size, sequence_length, num_tags)
-            mask:  Show padding tags. 0 don't calculate score. (batch_size, sequence_length)
-        Returns:
-            tags: (batch_size)
-        """
-        batch_size, sequence_length, _ = emissions.shape
-        if mask is None:
-            mask = torch.ones([batch_size, sequence_length], dtype=torch.uint8)
-
-        emissions = emissions.transpose(0, 1).contiguous()
-        mask = mask.transpose(0, 1).contiguous()
-
-        # Start transition and first emission score
-        score = self.start_transitions + emissions[0]
-        history = []
-
-        for i in range(1, sequence_length):
-            broadcast_score = score.unsqueeze(2)
-            broadcast_emissions = emissions[i].unsqueeze(1)
-
-            next_score = broadcast_score + self.transitions + broadcast_emissions
-            next_score, indices = next_score.max(dim = 1)
-
-            score = torch.where(mask[i].unsqueeze(1), next_score, score)
-            history.append(indices)
-
-        # Add end transition score
-        score += self.end_transitions
-
-        # Compute the best path
-        seq_ends = mask.long().sum(dim = 0) - 1
-
-        best_tags_list = []
-        for i in range(batch_size):
-            _, best_last_tag = score[i].max(dim = 0)
-            best_tags = [best_last_tag.item()]
-
-            for hist in reversed(history[:seq_ends[i]]):
-                best_last_tag = hist[i][best_tags[-1]]
-                best_tags.append(best_last_tag.item())
-
-            best_tags.reverse()
-            best_tags_list.append(best_tags)
-
-        return best_tags_list
-
     def marginal_probabilities(self,
                                emissions: torch.Tensor,
                                mask: Optional[torch.ByteTensor] = None) -> torch.FloatTensor:
@@ -161,25 +110,76 @@ class BaseCRF(nn.Module):
 
         return torch.stack(log_proba)
 
+    def viterbi_decode(self,
+                       emissions: torch.Tensor,
+                       mask: Optional[torch.ByteTensor] = None) -> torch.FloatTensor:
+        """
+        Parameters:
+            emissions: (batch_size, sequence_length, num_tags)
+            mask:  Show padding tags. 0 don't calculate score. (batch_size, sequence_length)
+        Returns:
+            tags: (batch_size)
+        """
+        batch_size, sequence_length, _ = emissions.shape
+        if mask is None:
+            mask = torch.ones([batch_size, sequence_length], dtype=torch.uint8)
+
+        emissions = emissions.transpose(0, 1).contiguous()
+        mask = mask.transpose(0, 1).contiguous()
+
+        # Start transition and first emission score
+        score = self.start_transitions + emissions[0]
+        history = []
+
+        for i in range(1, sequence_length):
+            broadcast_score = score.unsqueeze(2)
+            broadcast_emissions = emissions[i].unsqueeze(1)
+
+            next_score = broadcast_score + self.transitions + broadcast_emissions
+            next_score, indices = next_score.max(dim = 1)
+
+            score = torch.where(mask[i].unsqueeze(1), next_score, score)
+            history.append(indices)
+
+        # Add end transition score
+        score += self.end_transitions
+
+        # Compute the best path
+        seq_ends = mask.long().sum(dim = 0) - 1
+
+        best_tags_list = []
+        for i in range(batch_size):
+            _, best_last_tag = score[i].max(dim = 0)
+            best_tags = [best_last_tag.item()]
+
+            for hist in reversed(history[:seq_ends[i]]):
+                best_last_tag = hist[i][best_tags[-1]]
+                best_tags.append(best_last_tag.item())
+
+            best_tags.reverse()
+            best_tags_list.append(best_tags)
+
+        return best_tags_list
+
     def restricted_viterbi_decode(self,
                                   emissions: torch.Tensor,
-                                  incomplete_tags: torch.ByteTensor,
+                                  possible_tags: torch.ByteTensor,
                                   mask: Optional[torch.ByteTensor] = None) -> torch.FloatTensor:
         """
         Parameters:
             emissions: (batch_size, sequence_length, num_tags)
-            incomplete_tags: (batch_size, sequence_length)
+            incomplete_tags: (batch_size, sequence_length, num_tags)
             mask:  Show padding tags. 0 don't calculate score. (batch_size, sequence_length)
         Returns:
             tags: (batch_size)
         """
         batch_size, sequence_length, num_tags = emissions.data.shape
         if mask is None:
-            mask = torch.ones_like(incomplete_tags, dtype=torch.uint8)
+            mask = torch.ones([batch_size, sequence_length], dtype=torch.uint8)
 
         emissions = emissions.transpose(0, 1).contiguous()
-        mask = mask.float().transpose(0, 1).contiguous()
-        possible_tags = create_possible_tag_masks(self.num_tags, incomplete_tags)
+        mask = mask.transpose(0, 1).contiguous()
+        possible_tags = possible_tags.float().transpose(0, 1).contiguous()
 
         # Start transition score and first emission
         first_possible_tag = possible_tags[0]
@@ -203,8 +203,8 @@ class BaseCRF(nn.Module):
             transition_scores[(current_possible_tags == 0)] = IMPOSSIBLE_SCORE
             transition_scores.transpose(1, 2)[(next_possible_tags == 0)] = IMPOSSIBLE_SCORE
 
-            broadcast_score = score.unsqueeze(2)
-            next_score = broadcast_score + transitions + emissions_score
+            broadcast_score = score.view(batch_size, num_tags, 1)
+            next_score = broadcast_score + transition_scores + emissions_score
             next_score, indices = next_score.max(dim=1)
 
             score = torch.where(mask[i].unsqueeze(1), next_score, score)
@@ -227,7 +227,6 @@ class BaseCRF(nn.Module):
                 best_tags.append(best_last_tag.item())
 
             best_tags.reverse()
-            best_tags.extend([self.PAD_INDEX] * ( max_len - len(best_tags) + 1) )
             best_tags_list.append(best_tags)
 
         return best_tags_list

@@ -51,6 +51,52 @@ class TestBaseCRF:
         viterbi_path = self.base_crf.viterbi_decode(self.emissions, mask)
         assert viterbi_path == [[2, 1, 2, 1], [2, 1]]
 
+    def test_restricted_viterbi_decode_without_mask(self):
+        possible_tags = torch.ByteTensor([
+                [
+                    [1, 1, 0, 1, 1, 1],
+                    [1, 0, 1, 1, 1, 1],
+                    [0, 0, 1, 1, 0, 1],
+                    [1, 0, 1, 1, 1, 1],
+                ],
+                [
+                    [0, 0, 0, 0, 0, 1],
+                    [0, 0, 0, 0, 0, 1],
+                    [0, 0, 0, 0, 0, 1],
+                    [0, 0, 0, 0, 0, 1],
+                ]
+        ])
+
+        viterbi_path = self.base_crf.viterbi_decode(self.emissions)
+        restricted_viterbi_path = self.base_crf.restricted_viterbi_decode(self.emissions, possible_tags)
+        assert restricted_viterbi_path != viterbi_path
+        assert restricted_viterbi_path == [[5, 2, 3, 2], [5, 5, 5, 5]]
+
+    def test_restricted_viterbi_decode_with_mask(self):
+        possible_tags = torch.ByteTensor([
+                [
+                    [1, 1, 0, 1, 1, 1],
+                    [1, 0, 1, 1, 1, 1],
+                    [0, 0, 1, 1, 0, 1],
+                    [1, 0, 1, 1, 1, 1],
+                ],
+                [
+                    [0, 0, 0, 0, 0, 1],
+                    [0, 0, 0, 0, 0, 1],
+                    [0, 0, 0, 0, 0, 1],
+                    [0, 0, 0, 0, 0, 1],
+                ]
+        ])
+        mask = torch.ByteTensor([
+                [1, 1, 1, 0],
+                [1, 1, 0, 0]
+        ])
+
+        viterbi_path = self.base_crf.viterbi_decode(self.emissions, mask)
+        restricted_viterbi_path = self.base_crf.restricted_viterbi_decode(self.emissions, possible_tags, mask)
+        assert restricted_viterbi_path != viterbi_path
+        assert restricted_viterbi_path == [[5, 2, 3], [5, 5]]
+
     def test_marginal_probabilities(self):
         marginal_probabilities = self.base_crf.marginal_probabilities(self.emissions)
         # TODO: Add test
