@@ -42,7 +42,7 @@ class BaseCRF(nn.Module):
         """
         if mask is None:
             batch_size, sequence_length, _ = emissions.data.shape
-            mask = torch.ones([batch_size, sequence_length], dtype=torch.uint8)
+            mask = torch.ones([batch_size, sequence_length], dtype=torch.uint8, device=emissions.device)
 
         alpha = self._forward_algorithm(emissions, 
                                         mask, 
@@ -122,7 +122,7 @@ class BaseCRF(nn.Module):
         """
         batch_size, sequence_length, _ = emissions.shape
         if mask is None:
-            mask = torch.ones([batch_size, sequence_length], dtype=torch.uint8)
+            mask = torch.ones([batch_size, sequence_length], dtype=torch.uint8, device=emissions.device)
 
         emissions = emissions.transpose(0, 1).contiguous()
         mask = mask.transpose(0, 1).contiguous()
@@ -175,7 +175,7 @@ class BaseCRF(nn.Module):
         """
         batch_size, sequence_length, num_tags = emissions.data.shape
         if mask is None:
-            mask = torch.ones([batch_size, sequence_length], dtype=torch.uint8)
+            mask = torch.ones([batch_size, sequence_length], dtype=torch.uint8, device=emissions.device)
 
         emissions = emissions.transpose(0, 1).contiguous()
         mask = mask.transpose(0, 1).contiguous()
