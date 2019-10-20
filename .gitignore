@@ -5,3 +5,4 @@ pytorch_partial_crf.egg-info
 .pypirc
 .vscode
 .cache
+docs/_build/

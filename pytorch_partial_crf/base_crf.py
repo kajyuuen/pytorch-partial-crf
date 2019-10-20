@@ -63,7 +63,7 @@ class BaseCRF(nn.Module):
         Parameters:
             emissions: (batch_size, sequence_length, num_tags)
             mask:  Show padding tags. 0 don't calculate score. (batch_size, sequence_length)
-            reverse: This parameter decide algorithm direction.
+            reverse_direction: This parameter decide algorithm direction.
         Returns:
             log_probabilities: (sequence_length, batch_size, num_tags)
         """
@@ -168,8 +168,8 @@ class BaseCRF(nn.Module):
         """
         Parameters:
             emissions: (batch_size, sequence_length, num_tags)
-            incomplete_tags: (batch_size, sequence_length, num_tags)
-            mask:  Show padding tags. 0 don't calculate score. (batch_size, sequence_length)
+            possible_tags: (batch_size, sequence_length, num_tags)
+            mask: Show padding tags. 0 don't calculate score. (batch_size, sequence_length)
         Returns:
             tags: (batch_size)
         """
