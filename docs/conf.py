@@ -60,3 +60,5 @@ autodoc_default_flags = [
 ]
 
 autosummary_generate = True
+
+master_doc = 'index'
