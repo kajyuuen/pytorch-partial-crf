@@ -4,8 +4,9 @@ python:
   - 3.7
 install:
   - pip install -r requirements.txt
+  - pip install pytest pytest-cov
   - pip install -e .
-script: pytest
+script: pytest -v --cov=pytorch_partial_crf
 after_success:
   - pip install coveralls
   - coveralls
