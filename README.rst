@@ -2,7 +2,6 @@ pytorch-partial-crf
 ===================
 
 .. image:: https://coveralls.io/repos/github/kajyuuen/pytorch-partial-crf/badge.svg
-:target: https://coveralls.io/github/kajyuuen/pytorch-partial-crf
 
 Partial/Fuzzy conditional random field in PyTorch.
 
