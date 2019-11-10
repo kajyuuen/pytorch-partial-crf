@@ -6,3 +6,4 @@ pytorch_partial_crf.egg-info
 .vscode
 .cache
 docs/_build/
+.venv
