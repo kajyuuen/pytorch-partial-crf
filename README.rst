@@ -1,6 +1,8 @@
 pytorch-partial-crf
 ===================
 
+{<img src="https://coveralls.io/repos/github/kajyuuen/pytorch-partial-crf/badge.svg?branch=master" alt="Coverage Status" />}[https://coveralls.io/github/kajyuuen/pytorch-partial-crf?branch=master]
+
 Partial/Fuzzy conditional random field in PyTorch.
 
 How to use
