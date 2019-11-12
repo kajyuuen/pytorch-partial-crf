@@ -5,6 +5,8 @@ pytorch-partial-crf
 
 Partial/Fuzzy conditional random field in PyTorch.
 
+Document: https://pytorch-partial-crf.readthedocs.io/
+
 How to use
 ============
 
