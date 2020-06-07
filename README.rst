@@ -92,6 +92,11 @@ Marginal probabilities
 
    model.marginal_probabilities(emissions)
 
+Contributing
+-------
+We welcome contributions! Please post your requests and comments on Issue.
+
+
 License
 -------
 
