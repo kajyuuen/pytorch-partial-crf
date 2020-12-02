@@ -64,7 +64,7 @@ Use partial CRF
         [-1, 0, -1, -1, 4],
     ])
 
-    # Computing log likelihood
+    # Computing negative log likelihood
     model(emissions, tags)
 
 Decoding
