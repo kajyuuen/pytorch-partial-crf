@@ -39,7 +39,7 @@ Use CRF
         [1, 0, 2, 4, 4],
     ])
 
-    # Computing log likelihood
+    # Computing negative log likelihood
     model(emissions, tags)
 
 Use partial CRF
