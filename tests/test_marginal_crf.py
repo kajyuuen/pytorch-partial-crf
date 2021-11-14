@@ -6,13 +6,13 @@ import math
 from pytest import approx
 import torch
 
-from pytorch_partial_crf import PartialCRF
+from pytorch_partial_crf import MarginalCRF
 
 SEED = 4738
 random.seed(SEED)
 torch.manual_seed(SEED)
 
-def manually_score(transitions_from_start, transitions_to_end, transitions, emissions, tags):
+def manually_score(transitions_from_start, transitions_to_end, transitions, emissions, tags, tag_proba=None):
     # Add start and end scores
     total = transitions_from_start[tags[0]] + transitions_to_end[tags[-1]]
     # Add transition scores
@@ -33,6 +33,20 @@ class TestAsCRF:
                 [1, 3, 4, 5],
                 [3, 0, 2, 5]
         ])
+        self.marginal_tags = torch.Tensor([
+                [
+                    [0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+                ],
+                [
+                    [0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+                    [1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+                ],
+        ])
 
         self.transitions = torch.Tensor([
                 [0.1, 0.2, 0.3, 0.4, 0.5, 0.6],
@@ -47,14 +61,14 @@ class TestAsCRF:
         self.transitions_to_end = torch.Tensor([-0.1, -0.2, 0.3, -0.4, -0.4, -0.5])
 
         self.num_tags = 6
-        self.crf = PartialCRF(self.num_tags)
-        self.crf.transitions = torch.nn.Parameter(self.transitions)
-        self.crf.start_transitions = torch.nn.Parameter(self.transitions_from_start)
-        self.crf.end_transitions = torch.nn.Parameter(self.transitions_to_end)
+
+        self.marginal_crf = MarginalCRF(self.num_tags)
+        self.marginal_crf.transitions = torch.nn.Parameter(self.transitions)
+        self.marginal_crf.start_transitions = torch.nn.Parameter(self.transitions_from_start)
+        self.marginal_crf.end_transitions = torch.nn.Parameter(self.transitions_to_end)
 
     def test_forward_without_mask(self):
-        log_likelihood = self.crf(self.emissions, self.tags)
-
+        log_likelihood = self.marginal_crf(self.emissions, self.marginal_tags)
         manual_log_likelihood = 0.0
         for emission, tag in zip(self.emissions, self.tags):
             gold_score = manually_score(self.transitions_from_start, self.transitions_to_end, self.transitions, emission.detach(), tag.detach())
@@ -71,7 +85,7 @@ class TestAsCRF:
                 [1, 1, 0, 0]
         ])
 
-        log_likelihood = self.crf(self.emissions, self.tags, mask)
+        log_likelihood = self.marginal_crf(self.emissions, self.marginal_tags, mask)
 
         manual_log_likelihood = 0.0
         for emission, tag, mask_i in zip(self.emissions, self.tags, mask):
@@ -99,6 +113,26 @@ class TestAsPartialCRF:
                 [1, 1, -1, 1],
                 [-1, -1, -1, -1]
         ])
+        self.marginal_tags = torch.Tensor([
+                [
+                    [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+                    [0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+                    [0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+                    [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+                ],
+                [
+                    [0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+                    [0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+                    [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+                    [0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+                ],
+                [
+                    [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+                    [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+                    [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+                    [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+                ],
+        ])
 
         self.transitions = torch.Tensor([
                 [0.1, 0.2, 0.3, 0.4, 0.5, 0.6],
@@ -113,13 +147,14 @@ class TestAsPartialCRF:
         self.transitions_to_end = torch.Tensor([-0.1, -0.2, 0.3, -0.4, -0.4, -0.5])
 
         self.num_tags = 6
-        self.partial_crf = PartialCRF(self.num_tags)
-        self.partial_crf.transitions = torch.nn.Parameter(self.transitions)
-        self.partial_crf.start_transitions = torch.nn.Parameter(self.transitions_from_start)
-        self.partial_crf.end_transitions = torch.nn.Parameter(self.transitions_to_end)
+
+        self.marginal_crf = MarginalCRF(self.num_tags)
+        self.marginal_crf.transitions = torch.nn.Parameter(self.transitions)
+        self.marginal_crf.start_transitions = torch.nn.Parameter(self.transitions_from_start)
+        self.marginal_crf.end_transitions = torch.nn.Parameter(self.transitions_to_end)
 
     def test_forward_without_mask(self):
-        log_likelihood = self.partial_crf(self.emissions, self.tags)
+        log_likelihood = self.marginal_crf(self.emissions, self.marginal_tags)
 
         manual_log_likelihood = 0.0
         # Calculate available path score
@@ -152,7 +187,7 @@ class TestAsPartialCRF:
                 [1, 1, 1, 0]
         ])
 
-        log_likelihood = self.partial_crf(self.emissions, self.tags, mask)
+        log_likelihood = self.marginal_crf(self.emissions, self.marginal_tags, mask)
 
         manual_log_likelihood = 0.0
         # Calculate available path score
@@ -181,20 +216,3 @@ class TestAsPartialCRF:
             manual_log_likelihood += denominator - numerator
 
         assert manual_log_likelihood == approx(log_likelihood.item())
-
-    def test_how_to_use(self):
-        # Create
-        num_tags = 6
-        model = PartialCRF(num_tags)
-
-        # Computing log likelihood
-        batch_size, sequence_length = 3, 5
-        emissions = torch.randn(batch_size, sequence_length, num_tags)
-
-        # Set unknown tag to -1
-        tags = torch.LongTensor([
-            [1, 2, 3, 3, 5],
-            [-1, 3, 3, 2, -1],
-            [-1, 0, -1, -1, 4],
-        ])
-        model(emissions, tags)

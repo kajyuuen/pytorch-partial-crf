@@ -3,7 +3,6 @@ import itertools
 import random
 import math
 
-import pytest
 from pytest import approx
 import torch
 
