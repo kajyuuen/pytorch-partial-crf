@@ -4,7 +4,6 @@ from typing import Optional
 import torch
 import torch.nn as nn
 
-from pytorch_partial_crf.utils import create_possible_tag_masks
 from pytorch_partial_crf.utils import log_sum_exp
 
 from pytorch_partial_crf.utils import IMPOSSIBLE_SCORE
