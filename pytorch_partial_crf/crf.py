@@ -1,7 +1,6 @@
-from typing import List, Optional
+from typing import Optional
 
 import torch
-import torch.nn as nn
 
 from pytorch_partial_crf.base_crf import BaseCRF
 from pytorch_partial_crf.utils import log_sum_exp

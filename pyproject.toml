@@ -1,9 +1,13 @@
 [tool.poetry]
 name = "pytorch-partial-crf"
-version = "0.2.0"
+version = "0.0.0"
 description = ""
-authors = ["Koga Kobayashi"]
+authors = ["Koga Kobayashi <kajyuuen@gmail.com>"]
 license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/kajyuuen/pytorch-partial-crf"
+repository = "https://github.com/kajyuuen/pytorch-partial-crf"
+
 
 [tool.poetry.dependencies]
 python = "^3.8"
@@ -11,6 +15,8 @@ pytest = "^6.2.5"
 torch = "^1.10.0"
 
 [tool.poetry.dev-dependencies]
+flake8 = "^4.0.1"
+Sphinx = "^4.3.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
