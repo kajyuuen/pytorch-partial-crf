@@ -8,6 +8,7 @@ from pytorch_partial_crf.utils import log_sum_exp
 
 from pytorch_partial_crf.utils import IMPOSSIBLE_SCORE
 
+
 class MarginalCRF(BaseCRF):
     """Marginal Conditional random field.
     """
