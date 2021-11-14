@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pytorch-partial-crf"
-version = "0.0.0"
+version = "0.2.1"
 description = ""
 authors = ["Koga Kobayashi <kajyuuen@gmail.com>"]
 license = "MIT"
