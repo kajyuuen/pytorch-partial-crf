@@ -7,3 +7,4 @@ pytorch_partial_crf.egg-info
 .cache
 docs/_build/
 .venv
+.pytest_cache
