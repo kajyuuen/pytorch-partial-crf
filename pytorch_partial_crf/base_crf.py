@@ -3,6 +3,7 @@ from typing import Optional
 
 import torch
 import torch.nn as nn
+import torch.nn.parameter as Parameter
 
 from pytorch_partial_crf.utils import log_sum_exp
 
@@ -14,13 +15,13 @@ class BaseCRF(nn.Module):
     def __init__(self, num_tags: int, padding_idx: int = None) -> None:
         super().__init__()
         self.num_tags = num_tags
-        self.start_transitions = nn.Parameter(torch.randn(num_tags))
-        self.end_transitions = nn.Parameter(torch.randn(num_tags))
+        self.start_transitions = Parameter(torch.randn(num_tags))
+        self.end_transitions = Parameter(torch.randn(num_tags))
         init_transition = torch.randn(num_tags, num_tags)
         if padding_idx is not None:
             init_transition[:, padding_idx] = IMPOSSIBLE_SCORE
             init_transition[padding_idx, :] = IMPOSSIBLE_SCORE
-        self.transitions = nn.Parameter(init_transition)
+        self.transitions = Parameter(init_transition)
 
     @abstractmethod
     def forward(self,
@@ -31,7 +32,7 @@ class BaseCRF(nn.Module):
 
     def marginal_probabilities(self,
                                emissions: torch.Tensor,
-                               mask: Optional[torch.ByteTensor] = None) -> torch.FloatTensor:
+                               mask: Optional[torch.ByteTensor] = None) -> torch.Tensor:
         """
         Parameters:
             emissions: (batch_size, sequence_length, num_tags)
@@ -47,8 +48,8 @@ class BaseCRF(nn.Module):
                                         mask, 
                                         reverse_direction = False)
         beta = self._forward_algorithm(emissions, 
-                                        mask, 
-                                        reverse_direction = True)
+                                       mask, 
+                                       reverse_direction = True)
         z = log_sum_exp(alpha[alpha.size(0) - 1] + self.end_transitions, dim = 1)
 
         proba = alpha + beta - z.view(1, -1, 1)
@@ -57,7 +58,7 @@ class BaseCRF(nn.Module):
     def _forward_algorithm(self,
                            emissions: torch.Tensor,
                            mask: torch.ByteTensor,
-                           reverse_direction: bool = False) -> torch.FloatTensor:
+                           reverse_direction: bool = False) -> torch.Tensor:
         """
         Parameters:
             emissions: (batch_size, sequence_length, num_tags)
@@ -111,7 +112,7 @@ class BaseCRF(nn.Module):
 
     def viterbi_decode(self,
                        emissions: torch.Tensor,
-                       mask: Optional[torch.ByteTensor] = None) -> torch.FloatTensor:
+                       mask: Optional[torch.ByteTensor] = None) -> torch.Tensor:
         """
         Parameters:
             emissions: (batch_size, sequence_length, num_tags)

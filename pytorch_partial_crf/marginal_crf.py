@@ -32,8 +32,8 @@ class MarginalCRF(BaseCRF):
         return torch.sum(forward_score - gold_score)
 
     def _denominator_score(self,
-                     emissions: torch.Tensor,
-                     mask: torch.ByteTensor) -> torch.Tensor:
+                           emissions: torch.Tensor,
+                           mask: torch.ByteTensor) -> torch.Tensor:
         """
         Parameters:
             emissions: (batch_size, sequence_length, num_tags)
